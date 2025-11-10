@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Jugada {
     private List<Ficha> jugada;
-    private boolean esCanasta;
+    private boolean esEscalera;
 
     public Jugada(List<Ficha> jugada){
         this.jugada = new ArrayList<>(jugada);
@@ -14,14 +14,21 @@ public class Jugada {
 
     public void agregarFicha(Ficha ficha){
         jugada.add(ficha);
+        ordenarJugada();
     }
 
-    public List<Ficha> getFichas(){
-        return jugada;
+    public List<Ficha> getFichas(){ return jugada; }
+
+    public boolean jugadaCanasta(){ return jugada.size() >= 7; }
+
+    public boolean canastaPura(){
+        return jugada.stream().filter(Ficha::esComodin).toList().isEmpty();
     }
 
-    public int getPuntos(){
-        return jugada.stream().mapToInt(Ficha::getPuntos).sum();
+    public void ordenarJugada(){
+        if(esEscalera){
+            jugada.sort(Comparator.comparing(Ficha::getNumero));
+        }
     }
 
     //validar jugada
@@ -35,22 +42,14 @@ public class Jugada {
                 .sorted(Comparator.comparingInt(Ficha::getNumero))
                 .toList();
 
-        int comodines = (int) jugada.stream().filter(f->f.getNumero()==0).count();
-        int comodinesDos = (int) jugada.stream().filter(f->f.getNumero()==2).count();
-        int totalComodines = comodines + comodinesDos;
+        int comodines = (int) jugada.stream().filter(f->f.esComodin()).count();
 
-        if(jugadaEscalera(fichasComunes,totalComodines)){
-            return true;
-        }
-        if(jugadaPierna(fichasComunes, totalComodines)){
-            return true;
-        }
-        return false;
+        return jugadaEscalera(fichasComunes,comodines) || jugadaPierna(fichasComunes,comodines);
     }
 
     //validar escalera
     private boolean jugadaEscalera(List<Ficha> fichasComunes, int totalComodines){
-        if(fichasComunes.isEmpty()){
+        if(fichasComunes.size() < 2){
             return false;
         }
 
@@ -63,16 +62,21 @@ public class Jugada {
 
         List<Integer> numeros = fichasComunes.stream().map(Ficha::getNumero).sorted().toList();
         int huecos = 0;
+        int cant;
+
         for(int i=1; i < numeros.size(); i++){
-            huecos += numeros.get(i) - numeros.get(i-1) - 1;
+            cant = numeros.get(i) - numeros.get(i-1) - 1;
+            if(cant > 1){ return false; }
+            huecos += cant;
         }
 
+        this.esEscalera = true;
         return huecos <= totalComodines;
     }
 
     //validar pierna
     private boolean jugadaPierna(List<Ficha> fichasComunes, int totalComodines){
-        if(fichasComunes.isEmpty()){
+        if(fichasComunes.size() < 2){
             return false;
         }
 
@@ -82,7 +86,8 @@ public class Jugada {
                 return false;
             }
         }
-        int totalFichas = fichasComunes.size() + totalComodines;
-        return totalFichas >= 3;
+
+        this.esEscalera = false;
+        return fichasComunes.size() + totalComodines > 3;
     }
 }
