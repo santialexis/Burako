@@ -10,7 +10,7 @@ public class Ficha {
         this.numero = numero;
         this.color = color;
         this.puntos = puntosFicha();
-        this.comodin = numero == 0 || numero == 2;
+        this.comodin = (numero == 0 || numero == 2);
     }
 
     private int puntosFicha(){

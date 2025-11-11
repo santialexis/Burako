@@ -79,4 +79,15 @@ public class Mesa {
     public boolean pozoVacio(){
         return pozo.isEmpty();
     }
+
+    public void mostrarPozo(){
+        if(pozo.isEmpty()){
+            System.out.println("El pozo esta vacio...");
+        } else {
+            for(Ficha f : pozo){
+                System.out.print("[" + f.toString() + "]");
+            }
+        }
+        System.out.println();
+    }
 }

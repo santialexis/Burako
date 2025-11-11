@@ -9,8 +9,11 @@ public class Burako {
         List<Jugador> jugadores = new ArrayList<>();
         Scanner scan = new Scanner(System.in);
 
+        System.out.println("==================== BURAKO ====================");
+        System.out.println("\nIngrese los nombres de los jugadores:");
+
         for(int i=0; i < 2; i++){
-            System.out.print("Jugador " + i + ": ");
+            System.out.print("Jugador " + (i+1) + ": ");
             String nombre = scan.nextLine();
             jugadores.add(new Jugador(nombre));
         }

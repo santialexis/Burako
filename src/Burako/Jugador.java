@@ -1,7 +1,6 @@
 package Burako;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Jugador {
     private final String nombre;
@@ -69,15 +68,35 @@ public class Jugador {
     }
 
     public void mostrarAtril(){
+        Map<Color,List<Ficha>> gruposFichas = new LinkedHashMap<>();
+        for(Color c : Color.values()){
+            gruposFichas.put(c, new ArrayList<>());
+        }
+
         for(Ficha f : atril){
-            System.out.print("[" + f.toString() + "]");
+            gruposFichas.get(f.getColor()).add(f);
+        }
+
+        for(List<Ficha> grupo : gruposFichas.values()){
+            grupo.sort(Comparator.comparingInt(Ficha::getNumero));
+        }
+
+        for(Color c : Color.values()){
+            List<Ficha> grupo = gruposFichas.get(c);
+            if(!grupo.isEmpty()){
+                System.out.print(c.emoji() + " ");
+                for(Ficha f : grupo){
+                    System.out.print("[" + f.toString() + "]");
+                }
+                System.out.println();
+            }
         }
     }
 
     public void mostrarJugadas(){
         for(int j=0; j < jugadasEnMesa.size(); j++){
-            System.out.print("\n" + j+1 + "º jugada ->");
-            for(Ficha f : jugadasEnMesa.get(0).getFichas()){
+            System.out.print("\n" + (j+1) + "º jugada ->");
+            for(Ficha f : jugadasEnMesa.get(j).getFichas()){
                 System.out.print(" [" + f.toString() + "]");
             }
             System.out.println();

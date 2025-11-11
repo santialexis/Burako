@@ -37,14 +37,18 @@ public class Jugada {
             return false;
         }
 
-        List<Ficha> fichasComunes = jugada.stream()
-                .filter(f->!f.esComodin())
-                .sorted(Comparator.comparingInt(Ficha::getNumero))
-                .toList();
-
+        List<Ficha> fichasComunes = jugada.stream().filter(f->!f.esComodin()).toList();
         int comodines = (int) jugada.stream().filter(f->f.esComodin()).count();
 
-        return jugadaEscalera(fichasComunes,comodines) || jugadaPierna(fichasComunes,comodines);
+        if(jugadaEscalera(fichasComunes,comodines)){
+            this.esEscalera = true;
+            return true;
+        }
+        else if(jugadaPierna(fichasComunes)){
+            this.esEscalera = false;
+            return true;
+        }
+        return false;
     }
 
     //validar escalera
@@ -70,12 +74,11 @@ public class Jugada {
             huecos += cant;
         }
 
-        this.esEscalera = true;
         return huecos <= totalComodines;
     }
 
     //validar pierna
-    private boolean jugadaPierna(List<Ficha> fichasComunes, int totalComodines){
+    private boolean jugadaPierna(List<Ficha> fichasComunes){
         if(fichasComunes.size() < 2){
             return false;
         }
@@ -87,7 +90,6 @@ public class Jugada {
             }
         }
 
-        this.esEscalera = false;
-        return fichasComunes.size() + totalComodines > 3;
+        return true;
     }
 }
