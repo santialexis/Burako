@@ -15,6 +15,7 @@ public class Burako {
         for(int i=0; i < 2; i++){
             System.out.print("Jugador " + (i+1) + ": ");
             String nombre = scan.nextLine();
+            nombre = nombre.strip();
             jugadores.add(new Jugador(nombre));
         }
 

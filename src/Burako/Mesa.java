@@ -1,7 +1,6 @@
 package Burako;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
 
@@ -14,42 +13,6 @@ public class Mesa {
         this.pozo = new ArrayList<>();
     }
 
-    public void repartirFichas(List<Jugador> jugadores){
-        List<Ficha> fichasTodas = crearFichas();
-        Collections.shuffle(fichasTodas);
-
-        for(Jugador j : jugadores){
-            //repartir muertos
-            List<Ficha> fichasMuerto = new ArrayList<>();
-            for(int m=0; m < 11; m++){
-                fichasMuerto.add((fichasTodas.remove(0)));
-            }
-            j.setMuerto(fichasMuerto);
-            //repartir atril
-            List<Ficha> fichasIniciales = new ArrayList<>();
-            for(int a=0; a < 12; a++){
-                fichasIniciales.add(fichasTodas.remove(0));
-            }
-            j.setAtril(fichasIniciales);
-        }
-        pila.addAll(fichasTodas);
-    }
-
-    public List<Ficha> crearFichas() {
-        List<Ficha> fichasJuego = new ArrayList<>();
-
-        for (int j = 0; j < 2; j++){
-            for (Color col : Color.values()){
-                if(col.equals(Color.NINGUNO)){continue;}
-                for (int num = 1; num <= 13; num++){
-                    fichasJuego.add(new Ficha(num,col));
-                }
-            }
-            fichasJuego.add(new Ficha(0, Color.NINGUNO));
-        }
-        return fichasJuego;
-    }
-
     public Ficha robarDePila(){
         if(pila.isEmpty()){
             System.out.println("Ya no hay mas fichas en la pila!");
@@ -59,17 +22,17 @@ public class Mesa {
     }
 
     public List<Ficha> robarPozo(){
-        if(pozo.isEmpty()){
-            System.out.println("No hay fichas en el pozo!");
-            return null;
-        }
-        List<Ficha> p = new ArrayList<>(pozo);
+        List<Ficha> pozovich = new ArrayList<>(pozo);
         pozo.clear();
-        return p;
+        return pozovich;
     }
 
     public void fichaAlPozo(Ficha ficha){
         pozo.add(ficha);
+    }
+
+    public void setPila(List<Ficha> fichas){
+        pila.addAll(fichas);
     }
 
     public boolean pilaVacia(){
@@ -88,6 +51,5 @@ public class Mesa {
                 System.out.print("[" + f.toString() + "]");
             }
         }
-        System.out.println();
     }
 }

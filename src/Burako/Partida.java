@@ -1,19 +1,29 @@
 package Burako;
 
 import java.util.*;
+import static Burako.Reglas.*;
 
 public class Partida {
     private List<Jugador> jugadores;
     private Mesa mesa;
     private int turno;
+    private boolean primerTurno; //en el primer turno puede tomar hasta 2 fichas
+    private boolean enCurso;
 
     public Partida(List<Jugador> jugadores){
         this.jugadores = jugadores;
         this.mesa = new Mesa();
+        this.enCurso = true;
+        this.primerTurno = true;
         this.turno = turnoInicial(jugadores);
-        mesa.repartirFichas(jugadores);
+        repartirFichas(jugadores,mesa);
     }
 
+    public void setEnCurso(boolean enCurso){
+        this.enCurso = enCurso;
+    }
+
+    /* METODOS DE PARTIDA */
     private int turnoInicial(List<Jugador> jugadores){
         Random rand = new Random();
         int mayorNumero = -1;
@@ -21,269 +31,237 @@ public class Partida {
 
         for(Jugador j : jugadores){
             int num = rand.nextInt(1,7);
-            System.out.print("\n->" + j.getNombre() + " tiro el dado y saco un " + num + "! <-");
+            System.out.print("\n-> " + j.getNombre() + " tiro el dado y saco un " + num + "! <-");
             if(num > mayorNumero){
                 mayorNumero = num;
                 jugadorInicial = j;
             }
         }
         System.out.println("\n-> Comienza " + jugadorInicial.getNombre() + " <-");
+        System.out.println("\n== Presione ENTER para continuar... ==");
+        Scanner scan = new Scanner(System.in);
+        scan.nextLine();
         return jugadores.indexOf(jugadorInicial);
     }
 
     public void iniciarPartida(){
-        while(true){
+        while(enCurso){
             Jugador actual = jugadores.get(turno);
-            jugarTurno(actual);
-            if(actual.atrilVacio() && actual.hizoCanasta()){
-                System.out.println("\n==== " + actual.getNombre() + " gano la ronda! ====");
-                break;
+            jugarTurno(actual); //turno del jugador actual
+
+            if(mesa.pilaVacia() && mesa.pozoVacio() && enCurso){ //verificar fin por falta de fichas
+                System.out.println("\n==== " + "No quedan mas fichas en la mesa!!!" + " ====\n");
+                enCurso = false;
             }
-            if(mesa.pilaVacia() && mesa.pozoVacio()){
-                System.out.println("\n==== " + "No quedan mas fichas en la mesa!!!" + " ====");
-                break;
-            }
-            turno = (turno + 1) % jugadores.size();
+
+            turno = (turno + 1) % jugadores.size(); //siguiente turno
         }
-        for(Jugador jug : jugadores){
+
+        for(Jugador jug : jugadores){ //calcular los puntos de todos los jugadores al terminar partida
             jug.setPuntaje(calcularPuntos(jug));
+            System.out.println("-> " + jug);
         }
-    }
-
-    private int calcularPuntos(Jugador jugador){
-        int nuevoPuntaje = jugador.getPuntaje();
-
-        nuevoPuntaje -= sumarPuntosFichas(jugador.getAtril()); //puntos del atril (restar)
-
-        if(!jugador.tomoElMuerto()){
-            nuevoPuntaje -= 100; //puntos por no tomar el muerto (-100)
-        }
-
-        int puntosJugadas = 0; //puntos de todas las jugadas (tanto fichas como si son canasta)
-        for(Jugada j : jugador.getJugadasEnMesa()){
-            puntosJugadas += sumarPuntosFichas(j.getFichas()); //puntos de fichas
-            if(j.jugadaCanasta()){
-                if(j.canastaPura()){
-                    puntosJugadas += 200; //puntos de canasta pura
-                } else {
-                    puntosJugadas += 100; //puntos de canasta impura
-                }
-            }
-        }
-
-        if(jugador.hizoCanasta()){
-            nuevoPuntaje += puntosJugadas;
-        } else {
-            nuevoPuntaje -= puntosJugadas;
-        }
-
-        return nuevoPuntaje;
-    }
-
-    private int sumarPuntosFichas(List<Ficha> fichas){
-        return fichas.stream().mapToInt(Ficha::getPuntos).sum();
+        continuar();
     }
 
     private void jugarTurno(Jugador jugador){
+        limpiar();
         System.out.println("\n==== Turno de " + jugador.getNombre() + " ====");
 
-        int opcion;
-        boolean descarto = false;
+        int opcionTomar; //opcion para tomar ficha/s
         boolean tomoFicha = false;
 
-        while(!descarto){
-            System.out.println("\nATRIL:");
-            jugador.mostrarAtril();
-            System.out.print("POZO -> ");
-            mesa.mostrarPozo();
+        System.out.println("\nATRIL:");
+        jugador.mostrarAtril();
 
-            mostrarOpciones();
-            opcion = pedirOpcion();
-            switch (opcion) {
-                case 1:
-                    if(!tomoFicha){
-                        jugador.tomarFicha(mesa.robarDePila());
+        System.out.println("\nJUGADAS:");
+        jugador.mostrarJugadas();
+
+        System.out.print("\nPOZO: ");
+        mesa.mostrarPozo();
+
+        System.out.println("\n1 -> Levantar ficha de la pila <-");
+        System.out.println("2 -> Levantar fichas del pozo <-");
+
+        Ficha fichaPila; //guarda la ficha a tomar si se toma de la pila
+
+        while(!tomoFicha){ //hasta que no tome, no puede continuar con su turno
+            System.out.print("-> ");
+            opcionTomar = pedirOpcion();
+            switch (opcionTomar) {
+                case 1: //tomar de la pila
+                    fichaPila = mesa.robarDePila();
+                    if(fichaPila != null){
+                        jugador.tomarFicha(fichaPila);
                         tomoFicha = true;
-                    } else {
-                        System.out.println("\nYa se levantaron fichas!");
+                        System.out.println("Se levanto un " + fichaPila);
+                        if(primerTurno){
+                            usarPrimerTurno(jugador,fichaPila);
+                        }
+                        continuar();
+                        limpiar();
                     }
                     break;
-                
-                case 2:
+
+                case 2: //tomar el pozo
                     if(mesa.pozoVacio()){
                         System.out.println("\n-> El pozo no tiene fichas para levantar! <-");
-                    }
-                    else if(!tomoFicha){
+                    } else {
                         jugador.tomarPozo(mesa.robarPozo());
                         tomoFicha = true;
-                    } else {
-                        System.out.println("\nYa se levantaron fichas!");
-                    }
-                    break;
-                
-                case 3:
-                    if(tomoFicha){
-                        jugador.jugarFichas(armarJugada(jugador));
-                        if(jugador.atrilVacio()){
-                            jugador.intentarCortar();
-                        }
-                    } else {
-                        System.out.println("\n-> Antes de jugar debe tomar una ficha! <-");
-                    }
-                    break;
-
-                case 4:
-                    if(tomoFicha){
-                        Jugada jugada;
-                        Ficha ficha;
-                        if((jugada = elegirJugada(jugador)) != null && (ficha = elegirFicha(jugador)) != null){
-                            jugador.agregarFichaAJugada(ficha,jugada);
-                            if(jugador.atrilVacio()){
-                                jugador.intentarCortar();
-                            }
-                        }
-                    } else {
-                        System.out.println("\n-> Antes de jugar debe tomar una ficha! <-");
-                    }
-                    break;
-
-                case 5:
-                    if(tomoFicha){
-                        Ficha fichaDescarte;
-                        if((fichaDescarte = elegirFicha(jugador)) != null){
-                            mesa.fichaAlPozo(fichaDescarte);
-                            jugador.descartarFicha(fichaDescarte);
-                            descarto = true;
-                            if(jugador.atrilVacio()){
-                                jugador.intentarCortar();
-                            }
-                        }
-                    } else {
-                        System.out.println("\n-> Antes de descartar debe tomar una ficha! <-");
+                        limpiar();
                     }
                     break;
 
                 default:
-                    System.out.println("Opcion invalida! -> ");
+                    System.out.println("Opcion invalida!");
+                    break;
+            }
+        }
+
+        int opcionJugar; //opcion para jugar
+        boolean descarto = false; //puede jugar hasta que descarte una ficha
+
+        Ficha fichaDescarte; //ficha a descartar
+        Jugada jugadaMod; //jugada a modificar (si se quiere)
+        Ficha fichaAdd; //ficha a agregar a la jugada (si se quiere)
+
+        while(!descarto && !jugador.atrilVacio()){ //juega hasta que descarte una ficha o se quede sin
+            System.out.println("\nATRIL:");
+            jugador.mostrarAtril();
+            mostrarOpciones();
+            opcionJugar = pedirOpcion();
+            switch (opcionJugar) {
+                case 1:
+                    jugador.jugarFichas(jugador.armarJugada());
+                    if(jugador.atrilVacio()){
+                        jugador.intentarCortar(this);
+                    }
+                    limpiar();
+                    break;
+
+                case 2:
+                    if((jugadaMod = jugador.elegirJugada()) != null && (fichaAdd = jugador.elegirFicha()) != null){
+                        jugador.agregarFichaAJugada(fichaAdd,jugadaMod);
+                        if(jugador.atrilVacio()){
+                            jugador.intentarCortar(this);
+                        }
+                    }
+                    limpiar();
+                    break;
+
+                case 3:
+                    if(jugador.getJugadasEnMesa().isEmpty()){
+                        System.out.println("-> No tiene jugadas en mesa... <-");
+                    } else {
+                        jugador.mostrarJugadas();
+                    }
+                    continuar();
+                    limpiar();
+                    break;
+
+                case 4:
+                    if((fichaDescarte = jugador.elegirFicha()) != null){
+                        mesa.fichaAlPozo(fichaDescarte);
+                        jugador.descartarFicha(fichaDescarte);
+                        descarto = true;
+                        if(jugador.atrilVacio()){
+                            jugador.intentarCortar(this);
+                        }
+                    }
+                    limpiar();
+                    break;
+
+                case 5:
+                    Random rand = new Random();
+                    for(Jugador j : jugadores){
+                        int p = j.getPuntaje();
+                        int num = rand.nextInt(500,2000);
+                        j.setPuntaje(p + num);
+                    }
+                    enCurso = false;
+                    descarto = true;
+                    break;
+
+                case 6:
+                    List<Ficha> fichas = new ArrayList<>();
+                    for(int i=2; i < 10; i++){
+                        if(i == 5){
+                            continue;
+                        }
+                        fichas.add(new Ficha(i,Color.Amarillo));
+                    }
+                    Jugada jugada = new Jugada(fichas);
+                    jugadaValida(jugada);
+                    jugador.jugarFichas(jugada);
+                    break;
+
+                case 7:
+                    Jugada j = jugador.getJugadasEnMesa().get(0);
+                    jugador.agregarFichaAJugada(new Ficha(5,Color.Amarillo),j);
+                    break;
+
+                default:
+                    System.out.println("Opcion invalida!");
                     break;
             }
         }
     }
 
+    private void usarPrimerTurno(Jugador jugador, Ficha fichaTomada){
+        System.out.print("Descartar y recoger otra? (1: Si / 2: No) -> ");
+        int opcion = pedirOpcion();
+
+        while(opcion < 1 || opcion > 2){
+            System.out.print("Opcion invalida -> ");
+            opcion = pedirOpcion();
+        }
+
+        if(opcion == 1){
+            jugador.descartarFicha(fichaTomada);
+            mesa.fichaAlPozo(fichaTomada);
+            Ficha fichaNueva = mesa.robarDePila();
+            jugador.tomarFicha(fichaNueva);
+            System.out.println("Se levanto un " + fichaNueva);
+        }
+        primerTurno = false;
+    }
+
     private void mostrarOpciones(){
-        System.out.println("==== Seleccione una opcion ====");
-        System.out.println("1 -> Tomar ficha de la pila <-");
-        System.out.println("2 -> Tomar fichas del pozo <-");
-        System.out.println("3 -> Bajar jugada del atril <-");
-        System.out.println("4 -> Agregar ficha a jugada <-");
-        System.out.println("5 -> Descartar ficha <-");
+        System.out.println("\n==== Seleccione una opcion ====");
+        System.out.println("1 -> Bajar jugada del atril <-");
+        System.out.println("2 -> Agregar ficha a jugada <-");
+        System.out.println("3 -> Mostrar jugadas <-");
+        System.out.println("4 -> Descartar ficha (termina turno) <-");
+        System.out.println("5 -> prueba fin partida");
+        System.out.println("6 -> prueba validacion canastas");
+        System.out.println("7 -> prueba agregar fichas");
         System.out.print("-> ");
+    }
+
+    public static void continuar(){
+        System.out.println("\n== Presione ENTER para continuar... ==");
+        Scanner scan = new Scanner(System.in);
+        scan.nextLine();
+    }
+
+    private void limpiar() {
+        for (int i = 0; i < 40; i++) {
+            System.out.println();
+        }
     }
 
     private int pedirOpcion(){
         Scanner scan = new Scanner(System.in);
-        int opcion = scan.nextInt();
-        while(opcion < 1 || opcion > 5){
-            System.out.println("Opcion invalida! -> ");
-            opcion = scan.nextInt();
-        }
-        return opcion;
-    }
-
-    private Jugada armarJugada(Jugador jugador){
-        List<Ficha> fichasJugada = new ArrayList<>();
-        Scanner scan = new Scanner(System.in);
-
-        System.out.println("\n-> Seleccione las fichas de la jugada (numero + color) (\"comodin\" para comodines de 50) <-");
-        System.out.println("-> No digite nada para terminar <-");
-
-        while(true){
-            jugador.mostrarAtril();
-
-            System.out.print("-> ");
-            String ficha = scan.nextLine();
-
-            if(ficha.isEmpty()){
-                break;
-            }
-
-            Optional<Ficha> fichaEnAtril = jugador.getAtril().stream()
-                                            .filter(f -> f.toString().equalsIgnoreCase(ficha))
-                                            .findFirst();
-            if(fichaEnAtril.isPresent()){
-                Ficha fichita = fichaEnAtril.get();
-                fichasJugada.add(fichita);
-                jugador.getAtril().remove(fichita);
-            } else {
-                System.out.println("-> La ficha no esta en el atril! <-");
-            }
-        }
-
-        Jugada jugada = new Jugada(fichasJugada);
-        if(!jugada.jugadaValida()){
-            System.out.println("-> La jugada no es valida. Se devolveran las fichas al atril <-");
-            jugador.getAtril().addAll(fichasJugada);
-            fichasJugada.clear();
-            return null;
-        }
-        System.out.println("\n-> Bajando jugada... <-");
-        return jugada;
-    }
-
-    private Jugada elegirJugada(Jugador jugador){
-        Scanner scan = new Scanner(System.in);
-        int jugada;
-        System.out.println("\nSeleccione una jugada (nro. de jugada)");
-        System.out.println("No digite nada para cancelar.");
-        jugador.mostrarJugadas();
-
+        int opcion;
         while(true){
             String num = scan.nextLine();
-
-            if(num.isEmpty()){
-                System.out.println("Cancelando...");
-                return null;
-            }
-
+            num = num.strip();
             if(num.matches("\\d+")){
-                jugada = Integer.parseInt(num);
-                if(jugada < 1 || jugada > jugador.getJugadasEnMesa().size()){
-                    System.out.println("La jugada no existe!");
-                    System.out.print("-> ");
-                } else {
-                    break;
-                }
+                opcion = Integer.parseInt(num);
+                return opcion;
             } else {
-                System.out.println("Jugada no existente!");
-                System.out.print("-> ");
-            }
-        }
-        return jugador.getJugadasEnMesa().get(jugada-1);
-    }
-
-    private Ficha elegirFicha(Jugador jugador){
-        Scanner scan = new Scanner(System.in);
-        System.out.println();
-        jugador.mostrarAtril();
-        System.out.println("Seleccione una ficha (numero + color)");
-        System.out.print("No digite nada para cancelar ");
-
-        while(true){
-            System.out.print("-> ");
-            String ficha = scan.nextLine();
-
-            if(ficha.isEmpty()){
-                return null;
-            }
-
-            Optional<Ficha> existeFicha = jugador.getAtril().stream()
-                    .filter(f -> f.toString().equalsIgnoreCase(ficha))
-                    .findFirst();
-
-            if(existeFicha.isPresent()){
-                return existeFicha.get();
-            } else {
-                System.out.print("La ficha no esta en el atril! ");
+                System.out.print("Opcion invalida! -> ");
             }
         }
     }
